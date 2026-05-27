@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vicar
+      POSTGRES_PASSWORD: vicar
+      POSTGRES_DB: vicar
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../schema/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://vicar:vicar@postgres:5432/vicar
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
