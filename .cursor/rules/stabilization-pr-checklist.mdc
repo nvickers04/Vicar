@@ -1,0 +1,26 @@
+---
+description: Enforce thoughtful planning and small safe changes for staffing company
+alwaysApply: true
+---
+
+# Stabilization Checklist Rule
+
+When asked to plan, implement, refactor, or review changes:
+
+1. Start by reading `docs/core-business-plan.md` to ensure alignment with our strategy.
+2. Use `docs/stabilization-pr-checklist.md` as the default quality gate.
+3. Always identify:
+   - target subsystem
+   - likely adjacent impacts
+   - concrete verification steps
+   - rollback approach
+4. For any change affecting key areas (especially billing, compliance, candidate data, or company positioning), preserve intended behavior unless explicitly agreed.
+5. Require clear verification (even in planning phase — "how would a customer or team member experience this?").
+6. Prefer small, focused changes over large multi-part edits.
+
+**Staffing-specific hotspots (treat with care):**
+- Time & billing logic
+- Compliance and candidate data handling
+- Anything that affects money movement or legal obligations
+
+If a request conflicts with these gates, ask for explicit user approval to bypass. This is especially important while we are still in the planning phase.

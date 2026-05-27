@@ -8,9 +8,10 @@ alwaysApply: true
 For any non-trivial request (plan, coding, refactor, review):
 
 1. Read and follow:
+   - `docs/core-business-plan.md` (our primary strategy)
    - `docs/stabilization-pr-checklist.md`
    - `docs/change-impact-map.md`
-   - `docs/plain-english-glossary.md`
+   - `docs/staffing-glossary.md`
 2. Before proposing edits, list:
    - target subsystem
    - likely adjacent subsystem impacts
