@@ -27,7 +27,19 @@ export interface Contractor {
   displayName: string;
   roleCode?: string;
   defaultPayRate?: number;
+  /** Employment status — inactive workers are hidden from the timesheet grid. */
+  status?: 'active' | 'inactive';
+  /** Portal time-entry defaults for this worker. */
+  timeDefaults?: ContractorTimeDefaults;
   createdAt: string;
+}
+
+/** Per-employee defaults used by the client portal time entry form. */
+export interface ContractorTimeDefaults {
+  defaultStartTime: string;
+  defaultBreakMinutes: number;
+  otRule: 'daily_8' | 'daily_10' | 'weekly_40';
+  defaultEntryMode: 'start_end' | 'start_hours';
 }
 
 /** Client work order identified by a job number (used on invoices). */
@@ -216,4 +228,29 @@ export interface PayrollRunResult {
   marginPercent: number;
   contractorPayments: ContractorPaymentLine[];
   computedRates: Record<string, unknown>;
+}
+
+/** Simple portal login — client role only (dev/demo). */
+export interface PortalUser {
+  id: string;
+  clientId: string;
+  email: string;
+  password: string;
+  role: 'client';
+  name: string;
+}
+
+/** Saved weekly timesheet submission from the client portal. */
+export interface WeeklyTimesheetSubmission {
+  id: string;
+  clientId: string;
+  periodStart: string;
+  periodEnd: string;
+  status: 'draft' | 'submitted';
+  entryCount: number;
+  totalStHours: number;
+  totalOtHours: number;
+  payrollResult?: PayrollRunResult;
+  submittedAt?: string;
+  createdAt: string;
 }
