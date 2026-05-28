@@ -31,6 +31,25 @@ CREATE TABLE vicar.contractors (
 CREATE INDEX idx_contractors_client ON vicar.contractors (client_id);
 
 -- ---------------------------------------------------------------------------
+-- Jobs — client work orders identified by job number
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE vicar.jobs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id       UUID NOT NULL REFERENCES vicar.clients (id),
+    job_number      TEXT NOT NULL,
+    name            TEXT,
+    status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN (
+        'active', 'closed', 'void'
+    )),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (client_id, job_number)
+);
+
+CREATE INDEX idx_jobs_client ON vicar.jobs (client_id);
+
+-- ---------------------------------------------------------------------------
 -- Pricing profiles — one per client or contract, JSONB holds model-specific params
 -- Supported strategy_type values match PricingStrategyType in backend code.
 -- ---------------------------------------------------------------------------
@@ -87,6 +106,33 @@ CREATE TABLE vicar.timesheets (
 
 CREATE INDEX idx_timesheets_client_period ON vicar.timesheets (client_id, period_start, period_end);
 CREATE INDEX idx_timesheets_contractor ON vicar.timesheets (contractor_id);
+
+-- ---------------------------------------------------------------------------
+-- Timesheet entries — per-day ST/OT hours tied to a job and contractor
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE vicar.timesheet_entries (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id               UUID NOT NULL REFERENCES vicar.clients (id),
+    timesheet_id            UUID REFERENCES vicar.timesheets (id),
+    job_id                  UUID NOT NULL REFERENCES vicar.jobs (id),
+    contractor_id           UUID NOT NULL REFERENCES vicar.contractors (id),
+    work_date               DATE NOT NULL,
+    st_hours                NUMERIC(8, 2) NOT NULL DEFAULT 0 CHECK (st_hours >= 0),
+    ot_hours                NUMERIC(8, 2) NOT NULL DEFAULT 0 CHECK (ot_hours >= 0),
+    pay_rate                NUMERIC(12, 4) NOT NULL,
+    role_code               TEXT,
+    band_id                 TEXT,
+    burdened_cost_per_hour  NUMERIC(12, 4),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT timesheet_entries_has_hours CHECK (st_hours > 0 OR ot_hours > 0),
+    UNIQUE (contractor_id, job_id, work_date)
+);
+
+CREATE INDEX idx_timesheet_entries_timesheet ON vicar.timesheet_entries (timesheet_id);
+CREATE INDEX idx_timesheet_entries_job ON vicar.timesheet_entries (job_id);
+CREATE INDEX idx_timesheet_entries_contractor ON vicar.timesheet_entries (contractor_id);
+CREATE INDEX idx_timesheet_entries_work_date ON vicar.timesheet_entries (work_date);
 
 -- ---------------------------------------------------------------------------
 -- Rate snapshots — immutable record of rates used at invoice time
@@ -169,7 +215,7 @@ CREATE TABLE vicar.calculation_logs (
     pricing_profile_id  UUID REFERENCES vicar.pricing_profiles (id),
     invoice_id          UUID REFERENCES vicar.invoices (id),
     operation           TEXT NOT NULL CHECK (operation IN (
-        'calculate_bill_rate', 'generate_invoice', 'margin_check', 'preview'
+        'calculate_bill_rate', 'generate_invoice', 'margin_check', 'preview', 'run_payroll'
     )),
     input_payload       JSONB NOT NULL,
     output_payload      JSONB NOT NULL,

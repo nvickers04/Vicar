@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Invoice, PricingProfile, RateSnapshot, Timesheet } from '../types/index.js';
+import type { Invoice, Job, PricingProfile, RateSnapshot, Timesheet, TimesheetEntry } from '../types/index.js';
 import { logCalculation } from './compliance.js';
+import {
+  aggregateEntriesToLines,
+  groupEntriesByJob,
+  periodBoundsFromEntries,
+} from './entry-utils.js';
 import { aggregateMargin, checkMargin } from './margin-guard.js';
 import { getRawStrategy } from './registry.js';
 import type { BillRateContext, BillRateResult } from './types.js';
@@ -13,6 +18,21 @@ export interface CalculateBillRateInput {
   roleCode?: string;
   bandId?: string;
   periodLines?: BillRateContext['periodLines'];
+  /** Optional batch of per-day entries (aggregated for banded/blended models). */
+  entries?: TimesheetEntry[];
+}
+
+export interface JobBillRateBatchResult {
+  jobId: string;
+  jobNumber: string;
+  periodLines: BillRateContext['periodLines'];
+  billRate: BillRateResult;
+}
+
+export interface CalculateBillRateBatchInput {
+  profile: PricingProfile;
+  entries: TimesheetEntry[];
+  jobs: Job[];
 }
 
 export interface GenerateInvoiceInput {
@@ -29,7 +49,10 @@ export interface GenerateInvoiceOutput {
 
 /** Route to the correct strategy and calculate ST/OT bill rates for one worker context. */
 export function calculateBillRate(input: CalculateBillRateInput): BillRateResult {
-  const { profile, ...ctx } = input;
+  const { profile, entries, ...ctx } = input;
+  const periodLines =
+    ctx.periodLines ?? (entries && entries.length > 0 ? aggregateEntriesToLines(entries) : undefined);
+
   const strategy = getRawStrategy(profile.strategyType);
 
   if (profile.strategyType === 'hybrid') {
@@ -42,7 +65,7 @@ export function calculateBillRate(input: CalculateBillRateInput): BillRateResult
       burdenedCostPerHour: ctx.burdenedCostPerHour,
       roleCode: ctx.roleCode,
       bandId: ctx.bandId,
-      periodLines: ctx.periodLines,
+      periodLines,
     },
     profile.params,
   );
@@ -53,13 +76,47 @@ export function calculateBillRate(input: CalculateBillRateInput): BillRateResult
     clientId: profile.clientId,
     pricingProfileId: profile.id,
     operation: 'calculate_bill_rate',
-    inputPayload: { ...input },
+    inputPayload: { ...input, periodLines },
     outputPayload: { ...result, marginCheck },
     marginPercent: marginCheck.grossMarginPercent,
     withinMarginTarget: marginCheck.withinTarget,
   });
 
   return result;
+}
+
+/**
+ * Calculate bill rates for a batch of per-day entries, grouped by job number.
+ * Each job group is aggregated into period lines before pricing runs.
+ */
+export function calculateBillRateBatch(input: CalculateBillRateBatchInput): JobBillRateBatchResult[] {
+  const jobsById = new Map(input.jobs.map((j) => [j.id, j]));
+  const groups = groupEntriesByJob(input.entries, jobsById);
+
+  return groups.map(({ job, entries }) => {
+    const periodLines = aggregateEntriesToLines(entries);
+    const sample = periodLines[0];
+
+    if (!sample) {
+      throw new Error(`Job ${job.jobNumber} has no billable hours`);
+    }
+
+    const billRate = calculateBillRate({
+      profile: input.profile,
+      payRate: sample.payRate,
+      roleCode: sample.roleCode,
+      bandId: sample.bandId,
+      periodLines,
+      entries,
+    });
+
+    return {
+      jobId: job.id,
+      jobNumber: job.jobNumber,
+      periodLines,
+      billRate,
+    };
+  });
 }
 
 /** Generate invoice line items with immutable rate snapshot. */

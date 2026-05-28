@@ -30,6 +30,36 @@ export interface Contractor {
   createdAt: string;
 }
 
+/** Client work order identified by a job number (used on invoices). */
+export interface Job {
+  id: string;
+  clientId: string;
+  jobNumber: string;
+  name?: string;
+  status: 'active' | 'closed' | 'void';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Per-day straight-time and overtime hours for one contractor on one job. */
+export interface TimesheetEntry {
+  id: string;
+  clientId: string;
+  timesheetId?: string;
+  jobId: string;
+  contractorId: string;
+  /** ISO date (YYYY-MM-DD). */
+  workDate: string;
+  stHours: number;
+  otHours: number;
+  payRate: number;
+  contractorName?: string;
+  roleCode?: string;
+  bandId?: string;
+  burdenedCostPerHour?: number;
+  createdAt: string;
+}
+
 /** Per-client (or per-contract) pricing configuration. */
 export interface PricingProfile {
   id: string;
@@ -77,6 +107,8 @@ export interface Timesheet {
 export interface InvoiceLineItem {
   description: string;
   contractorId?: string;
+  jobId?: string;
+  jobNumber?: string;
   roleCode?: string;
   bandId?: string;
   hours: number;
@@ -142,10 +174,46 @@ export interface CalculationLog {
   clientId: string;
   pricingProfileId?: string;
   invoiceId?: string;
-  operation: 'calculate_bill_rate' | 'generate_invoice' | 'margin_check' | 'preview';
+  operation: 'calculate_bill_rate' | 'generate_invoice' | 'margin_check' | 'preview' | 'run_payroll';
   inputPayload: Record<string, unknown>;
   outputPayload: Record<string, unknown>;
   marginPercent?: number;
   withinMarginTarget?: boolean;
   createdAt: string;
+}
+
+/** Contractor payout derived from timesheet entries. */
+export interface ContractorPaymentLine {
+  contractorId: string;
+  contractorName?: string;
+  jobId: string;
+  jobNumber: string;
+  stHours: number;
+  otHours: number;
+  payRate: number;
+  stAmount: number;
+  otAmount: number;
+  totalAmount: number;
+}
+
+/** Client invoice subtotal grouped by job number. */
+export interface ClientInvoiceLinesByJob {
+  jobId: string;
+  jobNumber: string;
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  marginPercent?: number;
+}
+
+/** Result of runPayroll — client invoice lines per job + contractor payments. */
+export interface PayrollRunResult {
+  clientId: string;
+  periodStart: string;
+  periodEnd: string;
+  invoiceLinesByJob: ClientInvoiceLinesByJob[];
+  totalInvoice: number;
+  totalContractorPayout: number;
+  marginPercent: number;
+  contractorPayments: ContractorPaymentLine[];
+  computedRates: Record<string, unknown>;
 }
