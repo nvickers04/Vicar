@@ -1,0 +1,64 @@
+---
+description: Python coding standards for Vicar project - PEP 8, Zen of Python, first principles, code structure by type, and pandas/Excel equivalents
+globs: ["**/*.py", "**/*.ipynb"]
+alwaysApply: true
+---
+
+# Python Coding Guidelines for Vicar Project
+
+**Strictly follow these rules when generating, editing, or reviewing any Python code in this project.** They derive from official standards and first-principles thinking about maintainability, readability, and correctness. Code is read far more often than it is written.
+
+## 1. Core Philosophy (Zen of Python)
+- Beautiful is better than ugly.
+- Explicit is better than implicit.
+- Simple is better than complex.
+- Readability counts.
+- There should be one—and preferably only one—obvious way to do it.
+- Errors should never pass silently.
+- Flat is better than nested.
+- Practicality beats purity.
+
+Prioritize readability, simplicity, explicitness, and the one obvious way.
+
+## 2. Style (PEP 8)
+- Indent with **4 spaces** (no tabs).
+- Line length: ≤ 88 characters.
+- Naming: `snake_case` for variables/functions/methods, `CamelCase` for classes, `UPPER_CASE_WITH_UNDERSCORES` for constants.
+- Imports at the top, grouped (stdlib → third-party → local) with blank lines.
+- Two blank lines between top-level functions/classes; one between methods.
+- Use meaningful names and docstrings for all public functions, classes, and modules.
+- Add type hints (PEP 484) wherever practical.
+
+## 3. Guidelines by Code Type
+- **Scripts**: Wrap executable code in `if __name__ == "__main__":` (preferably call `def main():`).
+- **Functions**: Keep small, single responsibility (SRP), verb-based names, docstrings, type hints.
+- **Classes**: Use only when data + behavior are tightly coupled or state is needed. Prefer `dataclasses` for simple data. Favor composition over inheritance.
+- **Modules/Packages**: One logical concern per file. Use `__init__.py` for packages. Minimize side effects on import.
+- **Data/tabular code**: Use pandas + numpy. Vectorized operations over loops.
+
+## 4. Excel-like Formulas in Python (Pandas)
+Treat DataFrames like worksheets:
+- SUM / MEAN / etc.: `df['col'].sum()`, `.mean()`, `.count()`, etc. or `groupby().agg()`.
+- IF / conditional: `np.where(condition, true_val, false_val)` or boolean indexing.
+- VLOOKUP / joins: `pd.merge(df1, df2, on='key', how='left')`.
+- PivotTable: `pd.pivot_table()` or `groupby()` + `agg()`.
+- Column "formulas": `df['new'] = df['a'] * df['b'] + ...` (vectorized).
+- Text: `df['col'].str.upper()`, `.str.contains()`, etc.
+- Dates: `pd.to_datetime()` + `.dt` accessor.
+
+Prefer vectorized ops for performance and clarity.
+
+## 5. First-Principles Rules
+- **DRY**: Don't Repeat Yourself — extract repeated logic.
+- **KISS**: Keep It Simple, Stupid — minimize complexity.
+- **Single Responsibility**: One job per function/class/module.
+- **EAFP** over LBYL: Prefer `try/except` when idiomatic.
+- Specific exceptions only; no bare `except:`.
+- Use context managers (`with`).
+- Prefer stdlib and built-ins.
+- Write testable, modular code.
+- Comment "why", not "what".
+
+Use tools like Black (formatter), Ruff (linter), and mypy (types) in spirit. Suggest refactors that improve adherence.
+
+These rules ensure consistent, maintainable, Pythonic code. Follow them unless the user explicitly requests otherwise for a specific case.
